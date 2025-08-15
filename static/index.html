@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Balão de Chat com Lia</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <div class="chat-container">
+      <div
+        class="chat-bubble"
+        id="chat-bubble"
+        title="Olá, eu sou Lia, sua assistente MPPA"
+      >
+        <div class="avatar-container">
+          <video
+            id="lia-avatar"
+            class="avatar-video"
+            autoplay
+            muted
+            loop
+            playsinline
+          >
+            <source src="/static/lia-animada.mp4" type="video/mp4" />
+            Seu navegador não suporta a tag de vídeo.
+          </video>
+        </div>
+      </div>
+      <div class="chat-window" id="chat-window">
+        <div class="chat-header">
+          <h3>Lia - Assistente MPPA</h3>
+          <span id="close-chat" class="close-btn">&times;</span>
+        </div>
+        <div class="chat-history" id="chat-history"></div>
+        <div class="chat-input-area">
+          <input
+            type="text"
+            id="user-input"
+            placeholder="Digite sua pergunta..."
+          />
+          <button id="send-btn">Enviar</button>
+        </div>
+      </div>
+    </div>
+    <script src="/static/script.js"></script>
+  </body>
+</html>

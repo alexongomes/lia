@@ -8,6 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let isChatOpen = false;
   let initialMessageSent = false;
+  let conversationHistory = []; // Array para armazenar o histórico de mensagens
 
   // Lista de curiosidades para a Lia
   const curiosities = [
@@ -21,9 +22,8 @@ document.addEventListener("DOMContentLoaded", () => {
   chatBubble.addEventListener("click", () => {
     isChatOpen = !isChatOpen;
     chatWindow.style.display = isChatOpen ? "flex" : "none";
-    chatBubble.style.display = "none"; // Oculta o balão quando a janela está aberta
+    chatBubble.style.display = "none";
 
-    // Adiciona a mensagem inicial apenas na primeira vez que o chat é aberto
     if (isChatOpen && !initialMessageSent) {
       displayInitialMessage();
       initialMessageSent = true;
@@ -33,7 +33,9 @@ document.addEventListener("DOMContentLoaded", () => {
   closeBtn.addEventListener("click", () => {
     isChatOpen = false;
     chatWindow.style.display = "none";
-    chatBubble.style.display = "block"; // Mostra o balão novamente
+    chatBubble.style.display = "block";
+    conversationHistory = [];
+    chatHistory.innerHTML = "";
   });
 
   sendBtn.addEventListener("click", sendMessage);
@@ -44,47 +46,51 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   function displayInitialMessage() {
-    // Seleciona uma curiosidade aleatoriamente
     const randomIndex = Math.floor(Math.random() * curiosities.length);
     const randomCuriosity = curiosities[randomIndex];
+    const welcomeMessage = `Olá, eu sou a Lia. Bem-vindo! Você sabia?\n${randomCuriosity}`;
 
-    // Formata a mensagem completa
-    const welcomeMessage = `Bem-vindo! Você sabia?\n${randomCuriosity}`;
-
-    // Exibe a mensagem no chat
     addMessageToHistory("lia", welcomeMessage);
+    conversationHistory.push({ role: "assistant", content: welcomeMessage });
   }
 
   function sendMessage() {
     const message = userInput.value.trim();
     if (message === "") return;
 
-    // Adiciona a mensagem do usuário ao histórico
     addMessageToHistory("user", message);
-
-    // Limpa o input
+    conversationHistory.push({ role: "user", content: message });
     userInput.value = "";
 
-    // Simula uma chamada ao backend
     fetch("http://127.0.0.1:8011/chat", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ message: message }),
+      body: JSON.stringify({ message: message, history: conversationHistory }),
     })
       .then((response) => response.json())
       .then((data) => {
-        // Adiciona a resposta da Lia ao histórico
-        addMessageToHistory("lia", data.response);
+        const liaResponse = data.response;
+        addMessageToHistory("lia", liaResponse);
+        conversationHistory.push({ role: "assistant", content: liaResponse });
       })
       .catch((error) => {
         console.error("Erro ao conectar com o backend:", error);
-        addMessageToHistory(
-          "lia",
-          "Ocorreu um erro. Tente novamente mais tarde."
-        );
+        const errorMessage = "Ocorreu um erro. Tente novamente mais tarde.";
+        addMessageToHistory("lia", errorMessage);
+        conversationHistory.push({ role: "assistant", content: errorMessage });
       });
+  }
+
+  function formatMarkdown(text) {
+    // Substitui quebras de linha por <br>
+    let formattedText = text.replace(/\n/g, "<br>");
+
+    // Substitui *texto* por <b>texto</b>
+    formattedText = formattedText.replace(/\*(.*?)\*/g, "<b>$1</b>");
+
+    return formattedText;
   }
 
   function addMessageToHistory(sender, text) {
@@ -103,7 +109,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const contentDiv = document.createElement("div");
     contentDiv.classList.add("message-content");
-    contentDiv.textContent = text;
+    contentDiv.innerHTML = formatMarkdown(text); // Usa innerHTML e a nova função de formatação
     messageDiv.appendChild(contentDiv);
 
     chatHistory.appendChild(messageDiv);

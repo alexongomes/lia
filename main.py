@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from openai import AzureOpenAI
 from dotenv import load_dotenv
 from PyPDF2 import PdfReader
+from typing import List, Dict, Any
 
 # Carrega as variáveis de ambiente do arquivo .env
 load_dotenv()
@@ -59,10 +60,19 @@ def extrair_texto_de_pdf_online(url):
 # URL dos PDFs para extração
 url_pdf_civil = "https://www2.mppa.mp.br/simpacervo/download?param=/Departamento%20de%20Atividades%20Judiciais%20-%20DAJ/Procuradorias%20de%20Justica/PROCURADORIA-CIVEL.pdf"
 url_pdf_criminal = "https://www2.mppa.mp.br/simpacervo/download?param=/Departamento%20de%20Atividades%20Judiciais%20-%20DAJ/Procuradorias%20de%20Justica/PROCURADORIA-CRIMINAL.pdf"
-
+ 
 # Extrai o conteúdo dos PDFs
 conteudo_pdf_civil = extrair_texto_de_pdf_online(url_pdf_civil)
 conteudo_pdf_criminal = extrair_texto_de_pdf_online(url_pdf_criminal)
+
+# Tenta ler o conteúdo do arquivo CSV de endereços e telefones
+try:
+    with open("static/enderecos_e_telefones.csv", "r", encoding="utf-8") as file:
+        conteudo_enderecos_e_telefones = file.read()
+except FileNotFoundError:
+    print("Aviso: O arquivo 'static/enderecos_e_telefones.csv' não foi encontrado.")
+    conteudo_enderecos_e_telefones = "Informações de endereços e telefones não estão disponíveis."
+
 
 # System prompt base
 BASE_SYSTEM_PROMPT = """
@@ -85,6 +95,19 @@ Acesse este link para consultar outros endereços e telefones: http://transparen
 Atendimento ao público 8h às 14.
 Atendimento no protocolo 8h às 17h (2ª a 5ª) e 8h às 15h (6ª).
 
+### Endereços e telefones
+
+Você possui, a seguir, uma base de dados estruturada em formato CSV, contendo informações sobre departamentos, unidades, endereços, telefones e outros detalhes do MPPA.
+
+Sempre que o usuário perguntar por telefone, endereço, e-mail, CEP ou horário de atendimento de uma unidade, você deve:
+- Identificar o nome ou parte do nome da unidade/departamento.
+- Localizar a linha correspondente no CSV.
+- Retornar exatamente as informações encontradas, preservando formatação.
+- Se houver mais de uma correspondência, listar todas.
+
+Base de dados:
+${conteudo_enderecos_e_telefones}
+
 ### Relato de ocorrências
 Caso o isiário queira fazer denúncias ou abrir uma Notícia de Fato forneça o link da Central de Atendimento: https://www.mppa.mp.br/atendimento/central-de-atendimento-ao-cidadao.htm 
 
@@ -94,6 +117,8 @@ Caso o isiário queira fazer denúncias ou abrir uma Notícia de Fato forneça o
 Atenda os usuários usando as instruções deste prompt
 Quando  perguntarem sobre o MPPA - Ministério Público do Estado do Pará, você pode consultar o tópico "## Informações sobre o MPPA - Ministério Público do Estado do Pará". 
 SEMPRE que perguntarem sobre algum conceito, como aprender algo ou se tem nesse suporte, responda de forma completa seguindo esses passos: descrição, link;
+
+Responda até o maximo de 400 palavras.
 
 Se você não achar o assunto procurado, não invente. Apenas diga que esse assunto ainda não foi mapeado, mas que estamos trabalhando para melhorar o atendimento envolvendo todos os tópicos possíveis.
 
@@ -312,6 +337,7 @@ FINAL_SYSTEM_PROMPT = BASE_SYSTEM_PROMPT.replace("<PROCURADORIASCIVEL>", f"<PROC
 # Modelo para validar o corpo da requisição POST
 class ChatMessage(BaseModel):
     message: str
+    history: List[Dict[str, Any]]
 
 # Rota principal que serve o frontend
 @app.get("/")
@@ -322,14 +348,23 @@ async def get_index():
 
 # Rota da API para o chat com a IA
 @app.post("/chat")
-async def chat_with_lia(message: ChatMessage):
+async def chat_with_lia(chat_message: ChatMessage):
     try:
+        # Prepara a lista de mensagens para enviar para a API
+        messages_to_send = [
+            {"role": "system", "content": FINAL_SYSTEM_PROMPT},
+        ]
+
+        # Adiciona o histórico da conversa
+        for message in chat_message.history:
+            messages_to_send.append({"role": message["role"], "content": message["content"]})
+        
+        # Adiciona a mensagem atual do usuário
+        messages_to_send.append({"role": "user", "content": chat_message.message})
+
         completion = client.chat.completions.create(
             model=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"),
-            messages=[
-                {"role": "system", "content": FINAL_SYSTEM_PROMPT},
-                {"role": "user", "content": message.message}
-            ]
+            messages=messages_to_send
         )
         response_text = completion.choices[0].message.content
         return {"response": response_text}

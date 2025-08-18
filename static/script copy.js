@@ -7,11 +7,27 @@ document.addEventListener("DOMContentLoaded", () => {
   const sendBtn = document.getElementById("send-btn");
 
   let isChatOpen = false;
+  let initialMessageSent = false;
+
+  // Lista de curiosidades para a Lia
+  const curiosities = [
+    "A primeira mulher a ocupar o cargo de Procuradora-Geral de Justiça do Pará foi Edith Marília Maia Crespo, em 1988.",
+    "O Procurador-Geral de Justiça com o maior número de mandatos na história do MPPA é Geraldo de Mendonça Rocha, que ocupou o cargo por quatro vezes.",
+    "O MPPA tem um projeto específico para resgatar e preservar sua própria história, chamado Projeto Memória.",
+    "Existem grupos de atuação especializados dentro do MPPA, como o GAECO, que combate o crime organizado, e o GAES, que atua na área da saúde.",
+    "Gilberto Valente Martins foi o primeiro promotor de Justiça na história do MPPA a ser nomeado para o cargo de Procurador-Geral de Justiça.",
+  ];
 
   chatBubble.addEventListener("click", () => {
     isChatOpen = !isChatOpen;
     chatWindow.style.display = isChatOpen ? "flex" : "none";
     chatBubble.style.display = "none"; // Oculta o balão quando a janela está aberta
+
+    // Adiciona a mensagem inicial apenas na primeira vez que o chat é aberto
+    if (isChatOpen && !initialMessageSent) {
+      displayInitialMessage();
+      initialMessageSent = true;
+    }
   });
 
   closeBtn.addEventListener("click", () => {
@@ -26,6 +42,18 @@ document.addEventListener("DOMContentLoaded", () => {
       sendMessage();
     }
   });
+
+  function displayInitialMessage() {
+    // Seleciona uma curiosidade aleatoriamente
+    const randomIndex = Math.floor(Math.random() * curiosities.length);
+    const randomCuriosity = curiosities[randomIndex];
+
+    // Formata a mensagem completa
+    const welcomeMessage = `Bem-vindo! Você sabia?\n${randomCuriosity}`;
+
+    // Exibe a mensagem no chat
+    addMessageToHistory("lia", welcomeMessage);
+  }
 
   function sendMessage() {
     const message = userInput.value.trim();
@@ -66,7 +94,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (sender === "lia") {
       messageDiv.classList.add("lia-message");
       const liaIcon = document.createElement("img");
-      liaIcon.src = "/static/lia-avatar.png"; // Ajuste aqui
+      liaIcon.src = "/static/lia-avatar.png";
       liaIcon.classList.add("lia-avatar-icon");
       messageDiv.appendChild(liaIcon);
     } else {
